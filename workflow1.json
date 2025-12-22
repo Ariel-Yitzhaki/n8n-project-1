@@ -1,1 +1,1974 @@
-{}
+{
+  "updatedAt": "2025-12-22T09:50:46.321Z",
+  "createdAt": "2025-12-20T19:41:51.796Z",
+  "id": "Y9B8ZC20Co0HsyjZ",
+  "name": "main workflow",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "authentication": "airtableTokenApi",
+        "baseId": {
+          "__rl": true,
+          "value": "https://airtable.com/app8dWkc0kHd1wlUS/tbl3a2y6KHyjD498e/viw1zVk9XxRrTlWFb?blocks=hide",
+          "mode": "url"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "https://airtable.com/app8dWkc0kHd1wlUS/tbl3a2y6KHyjD498e/viw1zVk9XxRrTlWFb?blocks=hide",
+          "mode": "url"
+        },
+        "triggerField": "Created Time",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2672,
+        608
+      ],
+      "id": "ce76c9e2-727e-45ed-8af0-ad91e5c298e8",
+      "name": "Airtable Trigger",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "iXNx2Sg97H0IGCic",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "={{ $('Airtable Trigger').first().json.fields.Email }}",
+        "subject": "Generated Request",
+        "message": "=Would you like to keep this HTML page or generate a new one?\n\nView HTML Page: http://localhost:5678/webhook/view-html?id={{ $('Airtable Trigger').first().json.id  }}",
+        "responseType": "customForm",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Approval buttons",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Approve"
+                  },
+                  {
+                    "option": "Decline"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Notes",
+              "placeholder": "Enter your notes here"
+            }
+          ]
+        },
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "resumeAmount": 15,
+              "resumeUnit": "minutes"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        144,
+        160
+      ],
+      "id": "a9ff64c9-3487-4240-88b3-1565e027549e",
+      "name": "Send message and wait for response",
+      "webhookId": "f1a2c922-8ff8-43fc-a1db-26a97a040969",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2RmLP85pWPRHMCMi",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -1216,
+        816
+      ],
+      "id": "bbfc3dcf-e5b7-4b03-b208-2ff2a6fdb77e",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "2q30Mw9LzNsQ6q7o",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=For {{ $json.fields.Location }}, list exactly 3 popular tourist attractions. \nOutput ONLY the attraction names, one per line, no numbers or extra text.\nFormat:\nAttraction Name 1\nAttraction Name 2\nAttraction Name 3",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -2448,
+        528
+      ],
+      "id": "57ed1b56-cc3b-41e4-a8e8-4b17d970b15c",
+      "name": "generate attractions"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -2304,
+        944
+      ],
+      "id": "060dbd44-e4d3-4ba1-9bae-e8ca652cff94",
+      "name": "merge attractions and location"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst airtableData = items.find(item => item.json.fields);\nconst attractionsData = items.find(item => item.json.attraction1);\n\nreturn [{\n  json: {\n    Location: airtableData.json.fields.Location,\n    Email: airtableData.json.fields.Email,\n    attraction1: attractionsData.json.attraction1,\n    attraction2: attractionsData.json.attraction2,\n    attraction3: attractionsData.json.attraction3\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2096,
+        944
+      ],
+      "id": "250d9ad8-a6a3-46c7-8078-7ec4e60c8376",
+      "name": "combine the merge into a single table"
+    },
+    {
+      "parameters": {
+        "jsCode": "const Location = $json.Location;\n\nreturn [\n  { json: { attraction: $json.attraction1, Location: Location } },\n  { json: { attraction: $json.attraction2, Location: Location } },\n  { json: { attraction: $json.attraction3, Location: Location } }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1872,
+        944
+      ],
+      "id": "a4553879-15bd-49b0-9a92-ee471a7dfa77",
+      "name": "split attractions to 3 lists"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst coords = items.map(item => ({\n  lat: item.json.lat,\n  lon: item.json.lon,\n  name: item.json.display_name\n}));\n\nreturn [{\n  json: {\n    coord1: coords[0],\n    coord2: coords[1],\n    coord3: coords[2]\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1440,
+        944
+      ],
+      "id": "e9848977-40ec-4590-9095-6a31f2bd482a",
+      "name": "store coordinates"
+    },
+    {
+      "parameters": {
+        "url": "=https://nominatim.openstreetmap.org/search?q={{ $json.attraction }},{{ $json.Location }}&format=json&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n-workflow"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1648,
+        944
+      ],
+      "id": "e5538580-4018-4db5-bb62-b28ce66c3686",
+      "name": "get coordinates from open street map"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.unsplash.com/search/photos?query={{ $json.fields.Location }}&per_page=3",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Client-ID 3RF93rEXQWMY1tGPQF7NhRlW1X-PCmjtZ0EPZbppwfI"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2432,
+        384
+      ],
+      "id": "2ef94d2c-55e4-4409-a51d-aa7cecb78740",
+      "name": "generate images of location"
+    },
+    {
+      "parameters": {
+        "html": "{{ $('replace html template 1').first().json.html }}"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        -144,
+        160
+      ],
+      "id": "38d62ba9-90d3-4d52-8ca4-3ad81f2e58aa",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1280,
+        352
+      ],
+      "id": "273237bf-a9a7-4774-bc87-451e22fd9911",
+      "name": "merge attractions and location1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const htmlTemplate = `\n\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Travel Guide - {{LOCATION}}</title>\n    <style>\n        * {\n            margin: 0;\n            padding: 0;\n            box-sizing: border-box;\n        }\n        \n        body {\n            font-family: 'Arial', sans-serif;\n            background-color: #f5f5f5;\n            padding: 20px;\n        }\n        \n        .container {\n            max-width: 1200px;\n            margin: 0 auto;\n            background: white;\n            padding: 40px;\n            border-radius: 10px;\n            box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n        }\n        \n        h1 {\n            text-align: center;\n            color: #333;\n            margin-bottom: 30px;\n            font-size: 2.5em;\n        }\n        \n        .images-grid {\n            text-align: center;\n            display: grid;\n            grid-template-columns: repeat(3, 1fr);\n            gap: 20px;\n            margin-bottom: 50px;\n        }\n        \n        .images-grid img {\n            width: 100%;\n            height: 300px;\n            object-fit: cover;\n            border-radius: 8px;\n        }\n        \n        .recommendations {\n            text-align : center;\n        }\n        \n        .recommendations h2 {\n            color: #444;\n            margin-bottom: 40px;\n        }\n        \n        .recommendation-titles {\n            display: inline-block;\n            width: 30%;\n            margin-right: 20px;\n            vertical-align: top;\n        }\n\n        .recommendation-titles h3 {\n            color: #555;\n            margin-bottom: 10px;\n            text-align: center;\n        }\n\n        .recommendation-titles p {\n            line-height: 1.6;\n            height: 200px;\n            text-align: justify;\n            color: #666;\n        }\n        \n        .map-section {\n            text-align: center;\n        }\n        \n        .map-section h2 {\n            color: #444;\n            margin-bottom: 20px;\n        }\n        \n        .map-section img {\n            width: 100%;\n            max-width: 800px;\n            border-radius: 8px;\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <h1>Travel Guide for {{LOCATION}}</h1>\n        \n        <div class=\"images-grid\">\n            <img src=\"{{IMAGE1}}\" alt=\"Attraction 1\">\n            <img src=\"{{IMAGE2}}\" alt=\"Attraction 2\">\n            <img src=\"{{IMAGE3}}\" alt=\"Attraction 3\">\n        </div>\n        \n        <div class=\"recommendations\">\n            <h2>Top Attractions & Recommendations</h2>\n            <div class=\"recommendation-titles\">\n                <h3>{{Attraction1}}</h3>\n                <p>{{RECOMMENDATION1}}</p>           \n            </div>\n            <div class=\"recommendation-titles\">\n                <h3>{{Attraction2}}</h3>\n                <p>{{RECOMMENDATION2}}</p>           \n            </div>\n            <div class=\"recommendation-titles\" style=\"margin-right: 0;\">\n                <h3>{{Attraction3}}</h3>\n                <p>{{RECOMMENDATION3}}</p>           \n            </div>\n        </div>\n        \n        <div class=\"map-section\">\n            <h2>Location Map</h2>\n            <img src=\"{{MAP_URL}}\" alt=\"Map with attractions\">\n        </div>\n    </div>\n</body>\n</html>\n\n`;\n\nreturn [{ json: { htmlTemplate } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2432,
+        240
+      ],
+      "id": "485deafc-6c6c-4fdc-ba4c-4431d934b99e",
+      "name": "html template"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b5eceb4d-7049-4a28-9591-cf0aa6e73436",
+              "leftValue": "={{ $json.data['Approval buttons'] }}",
+              "rightValue": "Approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        320,
+        160
+      ],
+      "id": "4ec8038c-147d-47d6-bdc3-10a384beba80",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "app8dWkc0kHd1wlUS",
+          "mode": "list",
+          "cachedResultName": "Untitled Base",
+          "cachedResultUrl": "https://airtable.com/app8dWkc0kHd1wlUS"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl3a2y6KHyjD498e",
+          "mode": "list",
+          "cachedResultName": "Submissions",
+          "cachedResultUrl": "https://airtable.com/app8dWkc0kHd1wlUS/tbl3a2y6KHyjD498e"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Airtable Trigger').first().json.id }}",
+            "Links": "=http://localhost:5678/webhook/view-html?id={{ $('Airtable Trigger').first().json.id  }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created Time",
+              "displayName": "Created Time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Links",
+              "displayName": "Links",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        624,
+        144
+      ],
+      "id": "1e7a89cf-7334-4946-9d4b-f1ca322fe4f7",
+      "name": "Update record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "iXNx2Sg97H0IGCic",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "app8dWkc0kHd1wlUS",
+          "mode": "list",
+          "cachedResultName": "Untitled Base",
+          "cachedResultUrl": "https://airtable.com/app8dWkc0kHd1wlUS"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl3a2y6KHyjD498e",
+          "mode": "list",
+          "cachedResultName": "Submissions",
+          "cachedResultUrl": "https://airtable.com/app8dWkc0kHd1wlUS/tbl3a2y6KHyjD498e"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Airtable Trigger').first().json.id }}",
+            "HTML": "={{ $json.html }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created Time",
+              "displayName": "Created Time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Links",
+              "displayName": "Links",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "HTML",
+              "displayName": "HTML",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c611414f-ce68-478e-8b7c-dd7ab9787bda",
+      "name": "Update record1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "iXNx2Sg97H0IGCic",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Write travel recommendations for visiting these 3 attractions in {{ $('Airtable Trigger').first().json.fields.Location }}:\n1. {{ $json.attraction1 }}\n2. {{ $json.attraction2 }}\n3. {{ $json.attraction3 }}\n\nFormat each as its own paragraph with a blank line between them. Each paragraph should be 50-70 words, Include tips for visiting each attraction, best times to go, and what makes each special.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -1920,
+        448
+      ],
+      "id": "14ebdc5e-2fac-4259-aa18-3e0dfa275a6a",
+      "name": "recommendations for attractions 1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get HTML template\nconst template = $('html template').first().json.htmlTemplate;\n\n// Get location and email from Airtable\nconst airtableData = $('Airtable Trigger').first().json.fields;\nconst location = airtableData.Location;\nconst email = airtableData.Email;\n\n// Get images from Unsplash\nconst unsplashData = $('generate images of location').all(); // The Unsplash node\nconst image1 = unsplashData[0].json.results[0].urls.regular;\nconst image2 = unsplashData[0].json.results[1].urls.regular;\nconst image3 = unsplashData[0].json.results[2].urls.regular;\n\nconst  recommendations = $('organizing recommendations').all();\nconst  attractions = $('extract attractions from groq').all();\n \n// Get map URL from static map HTTP request\nconst coords = $('store coordinates').first().json;\nconst mapUrl = `https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=800&height=600&center=lonlat:${coords.coord1.lon},${coords.coord1.lat}&zoom=11&marker=lonlat:${coords.coord1.lon},${coords.coord1.lat};color:%23ff0000;size:medium|lonlat:${coords.coord2.lon},${coords.coord2.lat};color:%23ff0000;size:medium|lonlat:${coords.coord3.lon},${coords.coord3.lat};color:%23ff0000;size:medium&apiKey=4e0aa0a689d74a64bdc38a6ad6662f1c`;\n\n// Replace placeholders in template\nlet finalHtml = template\n  .replaceAll('{{LOCATION}}', location)\n  .replace('{{IMAGE1}}', image1)\n  .replace('{{IMAGE2}}', image2)\n  .replace('{{IMAGE3}}', image3)\n  .replace('{{RECOMMENDATION1}}', recommendations[0].json.recommendation1)\n  .replace('{{RECOMMENDATION2}}', recommendations[0].json.recommendation2)\n  .replace('{{RECOMMENDATION3}}', recommendations[0].json.recommendation3)\n  .replace('{{Attraction1}}', attractions[0].json.attraction1)\n  .replace('{{Attraction2}}', attractions[0].json.attraction2)\n  .replace('{{Attraction3}}', attractions[0].json.attraction3)\n  .replace('{{MAP_URL}}', mapUrl);\n\nreturn [{\n  json: {\n    html: finalHtml,\n    email: email\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1024,
+        384
+      ],
+      "id": "c59b70e1-c312-4f67-8500-ccbc46a3933e",
+      "name": "replace html template 1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2a0f7293-4eb4-4e73-8b7a-7f1df66b037e",
+              "name": "htmlTemplate",
+              "value": "={{ $('html template').first().json.htmlTemplate }}",
+              "type": "string"
+            },
+            {
+              "id": "a019e823-16f2-4c1b-a104-d41ce9bfc0c3",
+              "name": "location",
+              "value": "={{ $('Airtable Trigger').first().json.fields.Location }}",
+              "type": "string"
+            },
+            {
+              "id": "a8af50d7-bd49-4c65-b087-6a6e8d24d05b",
+              "name": "email",
+              "value": "={{ $('Airtable Trigger').first().json.fields.Email }}",
+              "type": "string"
+            },
+            {
+              "id": "eea45b3a-9aa2-4ca8-805f-80c30d319909",
+              "name": "unsplashData",
+              "value": "={{ $('generate images of location').all() }}",
+              "type": "array"
+            },
+            {
+              "id": "68c79aa0-085b-4c60-a67e-38e9e4c1b135",
+              "name": "userNote",
+              "value": "={{ $input.first().json.data.Notes }}",
+              "type": "string"
+            },
+            {
+              "id": "5203fc3d-86f0-4882-8df4-680b76d262a1",
+              "name": "id",
+              "value": "={{ $('Airtable Trigger').first().json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        368
+      ],
+      "id": "43d2fe83-153d-407e-abf8-5060bdc3eeeb",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const groqOutput = $input.first().json.text || $input.first().json.output || $input.first().json.response;\nconst attractions = groqOutput.split('\\n').filter(line => line.trim() !== '');\n\nreturn [{ \n  json: { \n    attraction1: attractions[0],\n    attraction2: attractions[1],\n    attraction3: attractions[2]\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2112,
+        528
+      ],
+      "id": "89d81570-407b-4232-b508-e54cc15b41a9",
+      "name": "extract attractions from groq"
+    },
+    {
+      "parameters": {
+        "jsCode": "const recommendations_raw = $input.first().json.text;\n\nconst recommendations = recommendations_raw.split(/\\n\\s*\\n/).filter(p=>p.trim().length >0);\n\nconst recommendation1 = recommendations[0] || '';\nconst recommendation2 = recommendations[1] || '';\nconst recommendation3 = recommendations[2] || '';\n\nreturn {\n  json: {\n    recommendation1,\n    recommendation2,\n    recommendation3\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1584,
+        416
+      ],
+      "id": "c728ce40-c044-4b1c-b91f-5083127e80db",
+      "name": "organizing recommendations"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "zQ0mRnflrl31ub6H",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/zQ0mRnflrl31ub6H",
+          "cachedResultName": "sub workflow loop"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        608,
+        368
+      ],
+      "id": "33ce66b8-8c6c-456e-b39b-8eb60bf1ce82",
+      "name": "Call 'sub workflow loop'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "pxneuucz3d0dNRin",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/pxneuucz3d0dNRin"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        832,
+        144
+      ],
+      "id": "a3bb3418-ca91-421c-8faa-30d82b1fa166",
+      "name": "Call 'My workflow'"
+    }
+  ],
+  "connections": {
+    "Airtable Trigger": {
+      "main": [
+        [
+          {
+            "node": "generate attractions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "generate images of location",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "html template",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "merge attractions and location",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "generate attractions",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "recommendations for attractions 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate attractions": {
+      "main": [
+        [
+          {
+            "node": "extract attractions from groq",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "merge attractions and location": {
+      "main": [
+        [
+          {
+            "node": "combine the merge into a single table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "combine the merge into a single table": {
+      "main": [
+        [
+          {
+            "node": "split attractions to 3 lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "split attractions to 3 lists": {
+      "main": [
+        [
+          {
+            "node": "get coordinates from open street map",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "store coordinates": {
+      "main": [
+        [
+          {
+            "node": "merge attractions and location1",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "get coordinates from open street map": {
+      "main": [
+        [
+          {
+            "node": "store coordinates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate images of location": {
+      "main": [
+        [
+          {
+            "node": "merge attractions and location1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "merge attractions and location1": {
+      "main": [
+        [
+          {
+            "node": "replace html template 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "html template": {
+      "main": [
+        [
+          {
+            "node": "merge attractions and location1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Update record1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record1": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "recommendations for attractions 1": {
+      "main": [
+        [
+          {
+            "node": "organizing recommendations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "replace html template 1": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Call 'sub workflow loop'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract attractions from groq": {
+      "main": [
+        [
+          {
+            "node": "recommendations for attractions 1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "merge attractions and location",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "organizing recommendations": {
+      "main": [
+        [
+          {
+            "node": "merge attractions and location1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Update record": {
+      "main": [
+        [
+          {
+            "node": "Call 'My workflow'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Airtable Trigger": {
+      "lastTimeChecked": "2025-12-22T09:52:06Z"
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "3ac8255b-40b5-4a3f-9304-de82c0cdb47d",
+  "activeVersionId": "3ac8255b-40b5-4a3f-9304-de82c0cdb47d",
+  "versionCounter": 39,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2025-12-20T19:41:51.800Z",
+      "createdAt": "2025-12-20T19:41:51.800Z",
+      "role": "workflow:owner",
+      "workflowId": "Y9B8ZC20Co0HsyjZ",
+      "projectId": "7WfZSy3h3hjfRwCk",
+      "project": {
+        "updatedAt": "2025-12-20T19:40:52.316Z",
+        "createdAt": "2025-12-20T19:40:32.825Z",
+        "id": "7WfZSy3h3hjfRwCk",
+        "name": "Ariel Yitzhaki <blodbrother2@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "projectRelations": [
+          {
+            "updatedAt": "2025-12-20T19:40:32.825Z",
+            "createdAt": "2025-12-20T19:40:32.825Z",
+            "userId": "8380a118-2a78-44fd-b5a5-234d0491856e",
+            "projectId": "7WfZSy3h3hjfRwCk",
+            "user": {
+              "updatedAt": "2025-12-22T09:32:31.000Z",
+              "createdAt": "2025-12-20T19:40:32.430Z",
+              "id": "8380a118-2a78-44fd-b5a5-234d0491856e",
+              "email": "blodbrother2@gmail.com",
+              "firstName": "Ariel",
+              "lastName": "Yitzhaki",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-12-20T19:40:56.283Z",
+                "personalization_survey_n8n_version": "2.0.3"
+              },
+              "settings": {
+                "userActivated": true,
+                "easyAIWorkflowOnboarded": true,
+                "firstSuccessfulWorkflowId": "Y9B8ZC20Co0HsyjZ",
+                "userActivatedAt": 1766311999175
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2025-12-22",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2025-12-22T09:50:48.000Z",
+    "createdAt": "2025-12-22T09:50:46.322Z",
+    "versionId": "3ac8255b-40b5-4a3f-9304-de82c0cdb47d",
+    "workflowId": "Y9B8ZC20Co0HsyjZ",
+    "nodes": [
+      {
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyMinute"
+              }
+            ]
+          },
+          "authentication": "airtableTokenApi",
+          "baseId": {
+            "__rl": true,
+            "value": "https://airtable.com/app8dWkc0kHd1wlUS/tbl3a2y6KHyjD498e/viw1zVk9XxRrTlWFb?blocks=hide",
+            "mode": "url"
+          },
+          "tableId": {
+            "__rl": true,
+            "value": "https://airtable.com/app8dWkc0kHd1wlUS/tbl3a2y6KHyjD498e/viw1zVk9XxRrTlWFb?blocks=hide",
+            "mode": "url"
+          },
+          "triggerField": "Created Time",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.airtableTrigger",
+        "typeVersion": 1,
+        "position": [
+          -2672,
+          608
+        ],
+        "id": "ce76c9e2-727e-45ed-8af0-ad91e5c298e8",
+        "name": "Airtable Trigger",
+        "credentials": {
+          "airtableTokenApi": {
+            "id": "iXNx2Sg97H0IGCic",
+            "name": "Airtable Personal Access Token account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "sendAndWait",
+          "sendTo": "={{ $('Airtable Trigger').first().json.fields.Email }}",
+          "subject": "Generated Request",
+          "message": "=Would you like to keep this HTML page or generate a new one?\n\nView HTML Page: http://localhost:5678/webhook/view-html?id={{ $('Airtable Trigger').first().json.id  }}",
+          "responseType": "customForm",
+          "formFields": {
+            "values": [
+              {
+                "fieldLabel": "Approval buttons",
+                "fieldType": "dropdown",
+                "fieldOptions": {
+                  "values": [
+                    {
+                      "option": "Approve"
+                    },
+                    {
+                      "option": "Decline"
+                    }
+                  ]
+                },
+                "requiredField": true
+              },
+              {
+                "fieldLabel": "Notes",
+                "placeholder": "Enter your notes here"
+              }
+            ]
+          },
+          "options": {
+            "limitWaitTime": {
+              "values": {
+                "resumeAmount": 15,
+                "resumeUnit": "minutes"
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          144,
+          160
+        ],
+        "id": "a9ff64c9-3487-4240-88b3-1565e027549e",
+        "name": "Send message and wait for response",
+        "webhookId": "f1a2c922-8ff8-43fc-a1db-26a97a040969",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "2RmLP85pWPRHMCMi",
+            "name": "Gmail account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "model": "llama-3.3-70b-versatile",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+        "typeVersion": 1,
+        "position": [
+          -1216,
+          816
+        ],
+        "id": "bbfc3dcf-e5b7-4b03-b208-2ff2a6fdb77e",
+        "name": "Groq Chat Model",
+        "credentials": {
+          "groqApi": {
+            "id": "2q30Mw9LzNsQ6q7o",
+            "name": "Groq account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=For {{ $json.fields.Location }}, list exactly 3 popular tourist attractions. \nOutput ONLY the attraction names, one per line, no numbers or extra text.\nFormat:\nAttraction Name 1\nAttraction Name 2\nAttraction Name 3",
+          "batching": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.chainLlm",
+        "typeVersion": 1.7,
+        "position": [
+          -2448,
+          528
+        ],
+        "id": "57ed1b56-cc3b-41e4-a8e8-4b17d970b15c",
+        "name": "generate attractions"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          -2304,
+          944
+        ],
+        "id": "060dbd44-e4d3-4ba1-9bae-e8ca652cff94",
+        "name": "merge attractions and location"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst airtableData = items.find(item => item.json.fields);\nconst attractionsData = items.find(item => item.json.attraction1);\n\nreturn [{\n  json: {\n    Location: airtableData.json.fields.Location,\n    Email: airtableData.json.fields.Email,\n    attraction1: attractionsData.json.attraction1,\n    attraction2: attractionsData.json.attraction2,\n    attraction3: attractionsData.json.attraction3\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -2096,
+          944
+        ],
+        "id": "250d9ad8-a6a3-46c7-8078-7ec4e60c8376",
+        "name": "combine the merge into a single table"
+      },
+      {
+        "parameters": {
+          "jsCode": "const Location = $json.Location;\n\nreturn [\n  { json: { attraction: $json.attraction1, Location: Location } },\n  { json: { attraction: $json.attraction2, Location: Location } },\n  { json: { attraction: $json.attraction3, Location: Location } }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1872,
+          944
+        ],
+        "id": "a4553879-15bd-49b0-9a92-ee471a7dfa77",
+        "name": "split attractions to 3 lists"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst coords = items.map(item => ({\n  lat: item.json.lat,\n  lon: item.json.lon,\n  name: item.json.display_name\n}));\n\nreturn [{\n  json: {\n    coord1: coords[0],\n    coord2: coords[1],\n    coord3: coords[2]\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1440,
+          944
+        ],
+        "id": "e9848977-40ec-4590-9095-6a31f2bd482a",
+        "name": "store coordinates"
+      },
+      {
+        "parameters": {
+          "url": "=https://nominatim.openstreetmap.org/search?q={{ $json.attraction }},{{ $json.Location }}&format=json&limit=1",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "n8n-workflow"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          -1648,
+          944
+        ],
+        "id": "e5538580-4018-4db5-bb62-b28ce66c3686",
+        "name": "get coordinates from open street map"
+      },
+      {
+        "parameters": {
+          "url": "=https://api.unsplash.com/search/photos?query={{ $json.fields.Location }}&per_page=3",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Client-ID 3RF93rEXQWMY1tGPQF7NhRlW1X-PCmjtZ0EPZbppwfI"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          -2432,
+          384
+        ],
+        "id": "2ef94d2c-55e4-4409-a51d-aa7cecb78740",
+        "name": "generate images of location"
+      },
+      {
+        "parameters": {
+          "html": "{{ $('replace html template 1').first().json.html }}"
+        },
+        "type": "n8n-nodes-base.html",
+        "typeVersion": 1.2,
+        "position": [
+          -144,
+          160
+        ],
+        "id": "38d62ba9-90d3-4d52-8ca4-3ad81f2e58aa",
+        "name": "HTML"
+      },
+      {
+        "parameters": {
+          "numberInputs": 4
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          -1280,
+          352
+        ],
+        "id": "273237bf-a9a7-4774-bc87-451e22fd9911",
+        "name": "merge attractions and location1"
+      },
+      {
+        "parameters": {
+          "jsCode": "const htmlTemplate = `\n\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Travel Guide - {{LOCATION}}</title>\n    <style>\n        * {\n            margin: 0;\n            padding: 0;\n            box-sizing: border-box;\n        }\n        \n        body {\n            font-family: 'Arial', sans-serif;\n            background-color: #f5f5f5;\n            padding: 20px;\n        }\n        \n        .container {\n            max-width: 1200px;\n            margin: 0 auto;\n            background: white;\n            padding: 40px;\n            border-radius: 10px;\n            box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n        }\n        \n        h1 {\n            text-align: center;\n            color: #333;\n            margin-bottom: 30px;\n            font-size: 2.5em;\n        }\n        \n        .images-grid {\n            text-align: center;\n            display: grid;\n            grid-template-columns: repeat(3, 1fr);\n            gap: 20px;\n            margin-bottom: 50px;\n        }\n        \n        .images-grid img {\n            width: 100%;\n            height: 300px;\n            object-fit: cover;\n            border-radius: 8px;\n        }\n        \n        .recommendations {\n            text-align : center;\n        }\n        \n        .recommendations h2 {\n            color: #444;\n            margin-bottom: 40px;\n        }\n        \n        .recommendation-titles {\n            display: inline-block;\n            width: 30%;\n            margin-right: 20px;\n            vertical-align: top;\n        }\n\n        .recommendation-titles h3 {\n            color: #555;\n            margin-bottom: 10px;\n            text-align: center;\n        }\n\n        .recommendation-titles p {\n            line-height: 1.6;\n            height: 200px;\n            text-align: justify;\n            color: #666;\n        }\n        \n        .map-section {\n            text-align: center;\n        }\n        \n        .map-section h2 {\n            color: #444;\n            margin-bottom: 20px;\n        }\n        \n        .map-section img {\n            width: 100%;\n            max-width: 800px;\n            border-radius: 8px;\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <h1>Travel Guide for {{LOCATION}}</h1>\n        \n        <div class=\"images-grid\">\n            <img src=\"{{IMAGE1}}\" alt=\"Attraction 1\">\n            <img src=\"{{IMAGE2}}\" alt=\"Attraction 2\">\n            <img src=\"{{IMAGE3}}\" alt=\"Attraction 3\">\n        </div>\n        \n        <div class=\"recommendations\">\n            <h2>Top Attractions & Recommendations</h2>\n            <div class=\"recommendation-titles\">\n                <h3>{{Attraction1}}</h3>\n                <p>{{RECOMMENDATION1}}</p>           \n            </div>\n            <div class=\"recommendation-titles\">\n                <h3>{{Attraction2}}</h3>\n                <p>{{RECOMMENDATION2}}</p>           \n            </div>\n            <div class=\"recommendation-titles\" style=\"margin-right: 0;\">\n                <h3>{{Attraction3}}</h3>\n                <p>{{RECOMMENDATION3}}</p>           \n            </div>\n        </div>\n        \n        <div class=\"map-section\">\n            <h2>Location Map</h2>\n            <img src=\"{{MAP_URL}}\" alt=\"Map with attractions\">\n        </div>\n    </div>\n</body>\n</html>\n\n`;\n\nreturn [{ json: { htmlTemplate } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -2432,
+          240
+        ],
+        "id": "485deafc-6c6c-4fdc-ba4c-4431d934b99e",
+        "name": "html template"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "b5eceb4d-7049-4a28-9591-cf0aa6e73436",
+                "leftValue": "={{ $json.data['Approval buttons'] }}",
+                "rightValue": "Approve",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          320,
+          160
+        ],
+        "id": "4ec8038c-147d-47d6-bdc3-10a384beba80",
+        "name": "If"
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "base": {
+            "__rl": true,
+            "value": "app8dWkc0kHd1wlUS",
+            "mode": "list",
+            "cachedResultName": "Untitled Base",
+            "cachedResultUrl": "https://airtable.com/app8dWkc0kHd1wlUS"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tbl3a2y6KHyjD498e",
+            "mode": "list",
+            "cachedResultName": "Submissions",
+            "cachedResultUrl": "https://airtable.com/app8dWkc0kHd1wlUS/tbl3a2y6KHyjD498e"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "id": "={{ $('Airtable Trigger').first().json.id }}",
+              "Links": "=http://localhost:5678/webhook/view-html?id={{ $('Airtable Trigger').first().json.id  }}"
+            },
+            "matchingColumns": [
+              "id"
+            ],
+            "schema": [
+              {
+                "id": "id",
+                "displayName": "id",
+                "required": false,
+                "defaultMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Location",
+                "displayName": "Location",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Email",
+                "displayName": "Email",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Created Time",
+                "displayName": "Created Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Links",
+                "displayName": "Links",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2.1,
+        "position": [
+          624,
+          144
+        ],
+        "id": "1e7a89cf-7334-4946-9d4b-f1ca322fe4f7",
+        "name": "Update record",
+        "credentials": {
+          "airtableTokenApi": {
+            "id": "iXNx2Sg97H0IGCic",
+            "name": "Airtable Personal Access Token account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "base": {
+            "__rl": true,
+            "value": "app8dWkc0kHd1wlUS",
+            "mode": "list",
+            "cachedResultName": "Untitled Base",
+            "cachedResultUrl": "https://airtable.com/app8dWkc0kHd1wlUS"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tbl3a2y6KHyjD498e",
+            "mode": "list",
+            "cachedResultName": "Submissions",
+            "cachedResultUrl": "https://airtable.com/app8dWkc0kHd1wlUS/tbl3a2y6KHyjD498e"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "id": "={{ $('Airtable Trigger').first().json.id }}",
+              "HTML": "={{ $json.html }}"
+            },
+            "matchingColumns": [
+              "id"
+            ],
+            "schema": [
+              {
+                "id": "id",
+                "displayName": "id",
+                "required": false,
+                "defaultMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Location",
+                "displayName": "Location",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Email",
+                "displayName": "Email",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Created Time",
+                "displayName": "Created Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Links",
+                "displayName": "Links",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "HTML",
+                "displayName": "HTML",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ],
+        "id": "c611414f-ce68-478e-8b7c-dd7ab9787bda",
+        "name": "Update record1",
+        "credentials": {
+          "airtableTokenApi": {
+            "id": "iXNx2Sg97H0IGCic",
+            "name": "Airtable Personal Access Token account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Write travel recommendations for visiting these 3 attractions in {{ $('Airtable Trigger').first().json.fields.Location }}:\n1. {{ $json.attraction1 }}\n2. {{ $json.attraction2 }}\n3. {{ $json.attraction3 }}\n\nFormat each as its own paragraph with a blank line between them. Each paragraph should be 50-70 words, Include tips for visiting each attraction, best times to go, and what makes each special.",
+          "batching": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.chainLlm",
+        "typeVersion": 1.7,
+        "position": [
+          -1920,
+          448
+        ],
+        "id": "14ebdc5e-2fac-4259-aa18-3e0dfa275a6a",
+        "name": "recommendations for attractions 1"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Get HTML template\nconst template = $('html template').first().json.htmlTemplate;\n\n// Get location and email from Airtable\nconst airtableData = $('Airtable Trigger').first().json.fields;\nconst location = airtableData.Location;\nconst email = airtableData.Email;\n\n// Get images from Unsplash\nconst unsplashData = $('generate images of location').all(); // The Unsplash node\nconst image1 = unsplashData[0].json.results[0].urls.regular;\nconst image2 = unsplashData[0].json.results[1].urls.regular;\nconst image3 = unsplashData[0].json.results[2].urls.regular;\n\nconst  recommendations = $('organizing recommendations').all();\nconst  attractions = $('extract attractions from groq').all();\n \n// Get map URL from static map HTTP request\nconst coords = $('store coordinates').first().json;\nconst mapUrl = `https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=800&height=600&center=lonlat:${coords.coord1.lon},${coords.coord1.lat}&zoom=11&marker=lonlat:${coords.coord1.lon},${coords.coord1.lat};color:%23ff0000;size:medium|lonlat:${coords.coord2.lon},${coords.coord2.lat};color:%23ff0000;size:medium|lonlat:${coords.coord3.lon},${coords.coord3.lat};color:%23ff0000;size:medium&apiKey=4e0aa0a689d74a64bdc38a6ad6662f1c`;\n\n// Replace placeholders in template\nlet finalHtml = template\n  .replaceAll('{{LOCATION}}', location)\n  .replace('{{IMAGE1}}', image1)\n  .replace('{{IMAGE2}}', image2)\n  .replace('{{IMAGE3}}', image3)\n  .replace('{{RECOMMENDATION1}}', recommendations[0].json.recommendation1)\n  .replace('{{RECOMMENDATION2}}', recommendations[0].json.recommendation2)\n  .replace('{{RECOMMENDATION3}}', recommendations[0].json.recommendation3)\n  .replace('{{Attraction1}}', attractions[0].json.attraction1)\n  .replace('{{Attraction2}}', attractions[0].json.attraction2)\n  .replace('{{Attraction3}}', attractions[0].json.attraction3)\n  .replace('{{MAP_URL}}', mapUrl);\n\nreturn [{\n  json: {\n    html: finalHtml,\n    email: email\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1024,
+          384
+        ],
+        "id": "c59b70e1-c312-4f67-8500-ccbc46a3933e",
+        "name": "replace html template 1"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "2a0f7293-4eb4-4e73-8b7a-7f1df66b037e",
+                "name": "htmlTemplate",
+                "value": "={{ $('html template').first().json.htmlTemplate }}",
+                "type": "string"
+              },
+              {
+                "id": "a019e823-16f2-4c1b-a104-d41ce9bfc0c3",
+                "name": "location",
+                "value": "={{ $('Airtable Trigger').first().json.fields.Location }}",
+                "type": "string"
+              },
+              {
+                "id": "a8af50d7-bd49-4c65-b087-6a6e8d24d05b",
+                "name": "email",
+                "value": "={{ $('Airtable Trigger').first().json.fields.Email }}",
+                "type": "string"
+              },
+              {
+                "id": "eea45b3a-9aa2-4ca8-805f-80c30d319909",
+                "name": "unsplashData",
+                "value": "={{ $('generate images of location').all() }}",
+                "type": "array"
+              },
+              {
+                "id": "68c79aa0-085b-4c60-a67e-38e9e4c1b135",
+                "name": "userNote",
+                "value": "={{ $input.first().json.data.Notes }}",
+                "type": "string"
+              },
+              {
+                "id": "5203fc3d-86f0-4882-8df4-680b76d262a1",
+                "name": "id",
+                "value": "={{ $('Airtable Trigger').first().json.id }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          400,
+          368
+        ],
+        "id": "43d2fe83-153d-407e-abf8-5060bdc3eeeb",
+        "name": "Edit Fields"
+      },
+      {
+        "parameters": {
+          "jsCode": "const groqOutput = $input.first().json.text || $input.first().json.output || $input.first().json.response;\nconst attractions = groqOutput.split('\\n').filter(line => line.trim() !== '');\n\nreturn [{ \n  json: { \n    attraction1: attractions[0],\n    attraction2: attractions[1],\n    attraction3: attractions[2]\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -2112,
+          528
+        ],
+        "id": "89d81570-407b-4232-b508-e54cc15b41a9",
+        "name": "extract attractions from groq"
+      },
+      {
+        "parameters": {
+          "jsCode": "const recommendations_raw = $input.first().json.text;\n\nconst recommendations = recommendations_raw.split(/\\n\\s*\\n/).filter(p=>p.trim().length >0);\n\nconst recommendation1 = recommendations[0] || '';\nconst recommendation2 = recommendations[1] || '';\nconst recommendation3 = recommendations[2] || '';\n\nreturn {\n  json: {\n    recommendation1,\n    recommendation2,\n    recommendation3\n  }\n};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1584,
+          416
+        ],
+        "id": "c728ce40-c044-4b1c-b91f-5083127e80db",
+        "name": "organizing recommendations"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "zQ0mRnflrl31ub6H",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/zQ0mRnflrl31ub6H",
+            "cachedResultName": "sub workflow loop"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          608,
+          368
+        ],
+        "id": "33ce66b8-8c6c-456e-b39b-8eb60bf1ce82",
+        "name": "Call 'sub workflow loop'"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "pxneuucz3d0dNRin",
+            "mode": "id",
+            "cachedResultUrl": "/workflow/pxneuucz3d0dNRin"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          832,
+          144
+        ],
+        "id": "a3bb3418-ca91-421c-8faa-30d82b1fa166",
+        "name": "Call 'My workflow'"
+      }
+    ],
+    "connections": {
+      "Airtable Trigger": {
+        "main": [
+          [
+            {
+              "node": "generate attractions",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "generate images of location",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "html template",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "merge attractions and location",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Groq Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "generate attractions",
+              "type": "ai_languageModel",
+              "index": 0
+            },
+            {
+              "node": "recommendations for attractions 1",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "generate attractions": {
+        "main": [
+          [
+            {
+              "node": "extract attractions from groq",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "merge attractions and location": {
+        "main": [
+          [
+            {
+              "node": "combine the merge into a single table",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "combine the merge into a single table": {
+        "main": [
+          [
+            {
+              "node": "split attractions to 3 lists",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "split attractions to 3 lists": {
+        "main": [
+          [
+            {
+              "node": "get coordinates from open street map",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "store coordinates": {
+        "main": [
+          [
+            {
+              "node": "merge attractions and location1",
+              "type": "main",
+              "index": 3
+            }
+          ]
+        ]
+      },
+      "get coordinates from open street map": {
+        "main": [
+          [
+            {
+              "node": "store coordinates",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "generate images of location": {
+        "main": [
+          [
+            {
+              "node": "merge attractions and location1",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "merge attractions and location1": {
+        "main": [
+          [
+            {
+              "node": "replace html template 1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "html template": {
+        "main": [
+          [
+            {
+              "node": "merge attractions and location1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTML": {
+        "main": [
+          [
+            {
+              "node": "Update record1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send message and wait for response": {
+        "main": [
+          [
+            {
+              "node": "If",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If": {
+        "main": [
+          [
+            {
+              "node": "Update record",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Edit Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update record1": {
+        "main": [
+          [
+            {
+              "node": "Send message and wait for response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "recommendations for attractions 1": {
+        "main": [
+          [
+            {
+              "node": "organizing recommendations",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "replace html template 1": {
+        "main": [
+          [
+            {
+              "node": "HTML",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields": {
+        "main": [
+          [
+            {
+              "node": "Call 'sub workflow loop'",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "extract attractions from groq": {
+        "main": [
+          [
+            {
+              "node": "recommendations for attractions 1",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "merge attractions and location",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "organizing recommendations": {
+        "main": [
+          [
+            {
+              "node": "merge attractions and location1",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "Update record": {
+        "main": [
+          [
+            {
+              "node": "Call 'My workflow'",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Ariel Yitzhaki",
+    "name": "Version 3ac8255b",
+    "description": "",
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2025-12-22T09:50:48.983Z",
+        "id": 13,
+        "workflowId": "Y9B8ZC20Co0HsyjZ",
+        "versionId": "3ac8255b-40b5-4a3f-9304-de82c0cdb47d",
+        "event": "activated",
+        "userId": "8380a118-2a78-44fd-b5a5-234d0491856e"
+      }
+    ]
+  }
+}
